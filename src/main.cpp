@@ -66,7 +66,6 @@ void loop()
     {
         while (1)
         {
-        Serial.println("Зашли в ЦИКЛ");
             if (digitalRead(photosensor_pin) && digitalRead(coil_pin)) // BOTH signals is HIGH => CLOSE
             {
                 control(CLOSE);
