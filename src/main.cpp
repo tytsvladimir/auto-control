@@ -2,6 +2,7 @@
 
 bool photosensor_status;    // photosensor status
 bool coil_status;           // coil status
+bool openedOrClosed;        // 0 - closed, 1 - opened
 
 unsigned long start_time = 0;
 unsigned long finish_time = 0;
@@ -29,19 +30,7 @@ void setup()
 
 void loop()
 {
-    if (check())
-    {
-        switchLed(0); //OPENED
-        while (1)
-        {
-            if (!check())
-            {
-                closeCom();
-                switchLed(1); //CLOSED
-                break;
-            }            
-        }
-    }
+    check();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -61,22 +50,24 @@ bool readPin(int pin)
             if (digitalRead(pin)) 
             {
                 last_condition = false;
-                return 1;
+                return 0;
             }
             else
             {
                 if (duration_time >= hold_time) break;
             }
         }
-        return 0;
+        return 1;
     }
     else if (!current_condition && last_condition);
     else if (current_condition && last_condition) last_condition = false;
-    else return 1;
+    else return 0;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool check(void)
+// 1. Функция на выезд (redPin уже реализована) (убеждаемся что сигнал длится непрерывно в течении указанного тайминга > открываем)
+// 2. Функция на въезд (реакция на фотик > флаг "открыто" > ожидание состояния датчиков 0-0 > закрытие)
+// 3. Функция
+int check(void)
 {
     //if (1-0 or 0-1 or 0-0) retern 1 else 0
     photosensor_status = digitalRead(photosensor_pin);
@@ -88,35 +79,51 @@ bool check(void)
     Serial.print((String)coil_status);
     Serial.println("___|");
     ////////////////////////////////////////////////////////
-    if (photosensor_status && !coil_status)
+    if ((photosensor_status && !coil_status) && openedOrClosed) //0-1
     {
-        bool resp = readPin(coil_pin);
-        return !resp;
+        if (int n = readPin(coil_pin))
+        {
+            control(open_pin, delayBeforeOpen, duration_time);
+            switchLed(1);
+            openedOrClosed = 1;
+        } 
     }
-    else if (!photosensor_status && !coil_status)
+    else if (!photosensor_status && coil_status)                //1-0
     {
-        return 1;
+        if (readPin(photosensor_pin))
+        {
+            switchLed(1);
+            openedOrClosed = 1;
+        }
     }
-
-
-    if ((!photosensor_status && coil_status) || 
-        (!photosensor_status && !coil_status)) return 1;
-    else return 0;
+    else if (!photosensor_status && !coil_status)               //1-1
+    {
+        while (1)
+        {
+            if (photosensor_status && coil_status)
+            {
+                control(close_pin, delayBeforeClose, durationCloseSignal);
+                switchLed(0);
+                openedOrClosed = 0;
+                break;
+            }
+        }
+    }
 }
 
-void closeCom(void)
+void control(int pin, int delay_, int duration)
 {
-    // Close the barrier
-    delay(delayBeforeClose);
-    digitalWrite(close_pin, 1);
-    delay(delayCloseSignal);
-    digitalWrite(close_pin, 0);
+    // Control the output
+    delay(delay_);
+    digitalWrite(pin, 1);
+    delay(duration);
+    digitalWrite(pin, 0);
 }
 
 void switchLed(bool st)
 {
-    // if st = 1 (close led - ON open led - OFF)
-    // if st = 0 (close led - OFF open led - ON)
-    digitalWrite(closed_led, st ? 1 : 0);
-    digitalWrite(opened_led, st ? 0 : 1);
+    // if st = 0 (close led - ON open led - OFF)
+    // if st = 1 (close led - OFF open led - ON)
+    digitalWrite(closed_led, st ? 0 : 1);
+    digitalWrite(opened_led, st ? 1 : 0);
 }

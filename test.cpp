@@ -1,3 +1,17 @@
+
+    if (check())
+    {
+        switchLed(0); //OPENED
+        while (1)
+        {
+            if (!check())
+            {
+                control(open_pin, delayBeforeOpen, durationOpenSignal);
+                switchLed(1); //CLOSED
+                break;
+            }            
+        }
+    }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 int readPin(int pin)
 {

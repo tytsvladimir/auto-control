@@ -9,9 +9,11 @@
 #define closed_led 11
 #define opened_led 12
 #define delayBeforeClose 1000
-#define delayCloseSignal 300
+#define durationCloseSignal 300
+#define delayBeforeOpen 100
+#define durationOpenSignal 300
 
 
-void closeCom(void);
+void control(int pin, int delay_, int duration);
 void switchLed(bool st);
-bool check(void);
+int check(void);
